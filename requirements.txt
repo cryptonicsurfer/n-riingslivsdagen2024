@@ -1,0 +1,6 @@
+streamlit
+python-dotenv
+requests
+google-cloud-storage
+google-auth
+openai
