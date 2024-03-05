@@ -5,7 +5,7 @@ from google.cloud import storage
 from google.oauth2 import service_account
 from openai import OpenAI
 
-# Initialize OpenAI client
+# Initialize OpenAI client with secrets
 OPENAI_API_KEY = st.secrets['OPENAI_API_KEY']
 client = OpenAI(api_key=OPENAI_API_KEY)
 llm = 'gpt-4-turbo-preview'
@@ -32,21 +32,25 @@ bucket = storage_client.bucket('falkenberg.tech')
 st.title("Näringslivsdagen 2024")
 st.header("Skapa en AI bild")
 
-user_input = st.text_area('Prompt:', key="user_input", value="", placeholder="En dansande farbror med en grupp barn i en apelsinträdgård på våren.", help="Beskriv vad du vill se i din bild. Beskriv stil och omgivning. Var gärna detaljerad.")
-user_name = st.text_input('Ditt namn:', key="user_name", value="")
-style_choice = st.radio("Choose a style:", ('AI Style', 'Natural'), key="style_choice")
+# Using Streamlit form functionality
+with st.form(key='image_creation_form', clear_on_submit=True):
+    user_input = st.text_area('Prompt:', key="user_input_prompt", placeholder="En dansande farbror med en grupp barn i en apelsinträdgård på våren.", help="Beskriv vad du vill se i din bild. Beskriv stil och omgivning. Var gärna detaljerad.")
+    user_name = st.text_input('Ditt namn:', key="user_name_input")
+    style_choice = st.radio("Välj en stil:", ('AI Style', 'Natural'), key="style_choice_radio")
 
-if st.button('Skapa bild'):
+    submit_button = st.form_submit_button('Skapa bild')
+
+if submit_button:
     if user_input and user_name:
-        st.write('Skapar bild...')
+        st.write('Skapar bild... det tar cirka 10 sekunder... Håll ut.. ')
         english_input = translate_prompt(user_input)
         curated_prompt = f'{english_input}, cyberpunk, synthwave, photorealistic'
-
+        
         prompt_to_use = english_input if style_choice == 'Natural' else curated_prompt
-
+        
         api_key = st.secrets['STABILITY_API_KEY']
         api_host = 'https://api.stability.ai'
-
+        
         # API request
         response = requests.post(
             f"{api_host}/v1/generation/stable-diffusion-v1-6/text-to-image",
@@ -72,12 +76,9 @@ if st.button('Skapa bild'):
                 blob = bucket.blob(f"{user_input} - {user_name}.png")
                 blob.upload_from_string(image_bytes, content_type='image/png')
                 
-                st.success('Tack! Din bild är nu skapad')
-                st.image(image_bytes, caption="Generated Image")
-                # Clear input after successful generation
-                st.session_state.user_input = ''
-                st.session_state.user_name = ''
-                break  # Assuming you want to process only the first image for now
+                st.success('Tack! Din bild är nu skapad!')
+                st.image(image_bytes, caption=(f"{user_input} - {user_name}"))
+                break  # Process only the first image
         else:
             st.error("Felmeddelande: " + str(response.text))
     else:
